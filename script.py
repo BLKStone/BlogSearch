@@ -21,6 +21,16 @@ crawler.createindextables()
 crawler.crawl(pagelist)
 
 
+# 数据库查询
+sqlite3 searchindex.db
+.quit
+.help
+select rowid,word from wordlist where rowid<100;
+
+# 搜索部分debug
+import PySearchEngine
+e = PySearchEngine.searcher('searchindex')
+
 
 c = urllib2.urlopen('http://movie.douban.com/top250')
 
