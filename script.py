@@ -27,10 +27,14 @@ sqlite3 searchindex.db
 .help
 select rowid,word from wordlist where rowid<100;
 
+
+
 # 搜索部分debug
 import PySearchEngine
-e = PySearchEngine.searcher('searchindex')
-
+reload(PySearchEngine)
+e = PySearchEngine.searcher('searchindex.db')
+searchtext='东西 集市 小组 阅读'
+e.getmatchrows(searchtext)
 
 c = urllib2.urlopen('http://movie.douban.com/top250')
 

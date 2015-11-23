@@ -178,11 +178,21 @@ class searcher:
         clauselist=''
         wordids=[]
 
-        # 根据空格拆分单词
-        words=q.split('')
+        # 拆分单词
+        seg_list = jieba.cut_for_search(q)
+        words = []
+        for seg in seg_list:
+            words.append(seg)
+
+        # print words
         tablenumber=0
 
+
         for word in words:
+            
+            # 检查语句
+            print "select rowid from wordlist where word='%s'" % word
+
             # 获取单词的ID
             wordrow = self.con.execute(
                 "select rowid from wordlist where word='%s'" % word).fetchone()
@@ -198,13 +208,41 @@ class searcher:
 
                 fieldlist+=',w%d.location' % tablenumber
                 tablelist+='wordlocation w%d' % tablenumber
-                clauselist+='w%d.wordid=%d' % (tablenumber,workid)
+                clauselist+='w%d.wordid=%d' % (tablenumber,wordid)
                 tablenumber+=1
 
-            # 根据各个分组，建立查询
-            fullquery='select %s from %s where %s' % (fieldlist,tablelist,clauselist)
-            #cur = self.con.execute(fullquery)
-            #rows = [row for row in cur]
+        # 根据各个分组，建立查询    
+        fullquery='select %s from %s where %s' % (fieldlist,tablelist,clauselist)
+        # debug 用于检查sql语句 
+        # print fullquery
+        cur = self.con.execute(fullquery)
+        rows = [row for row in cur]
+        return rows,wordids
 
-            return rows,wordids
+
+    # 获取排序评分
+    def getscorelist(self,rows,wordids):
+        totalscores = dict([(row[0],0) for row in rows])
+
+        # 此处是稍后放置评价函数的地方
+        weights = []
+
+        for (weight,scores) in weights:
+            for url in totalscores:
+                totalscores[url]+=weight*scores[url]
+
+        return totalscores
+
+    # 根据 urlid 查询url
+    def geturlname(self,id):
+        return self.con.execute(
+            "select url from urllist where rowid=%d" % id).fetchone()[0]
+
+    # 查询
+    def query(self,q):
+        rows,wordids = self.getmatchrows(q)
+        scores = self.getscorelist(rows,wordids)
+        rankedscores = sorted([(score,url) for (url,score) in scores.items()],reverse=1)
+        for (score,urlid) in rankedscores[0:10]:
+            print '%f\t%s' % (score,self.geturlname(urlid))
 
