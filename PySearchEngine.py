@@ -225,7 +225,8 @@ class searcher:
         totalscores = dict([(row[0],0) for row in rows])
 
         # 此处是稍后放置评价函数的地方
-        weights = [(0,self.frequencyscore(rows)),(1.0,self.locationscore(rows))]
+        weights = [(0,self.frequencyscore(rows)),(0,self.locationscore(rows)),
+                    (1.0,self.distancescore(rows))]
 
         for (weight,scores) in weights:
             for url in totalscores:
@@ -279,6 +280,20 @@ class searcher:
             if loc < locations[row[0]]: locations[row[0]]=loc
 
         return self.normalizescore(locations,smallIsBetter=1)
+
+    # 单词距离
+    def distancescore(self,rows):
+
+        # 如果仅有一个单词，则得分都一样
+        if len(rows[0]) <= 2: return dict([(row[0],1.0) for row in rows])
+
+        # 初始化字典
+        mindistance=dict([(row[0],100000) for row in rows])
+
+        for row in rows:
+            dist=sum(abs(row[i]-row[i-1]) for i in range(2,len(row)))
+            if dist<mindistance[row[0]]: mindistance[row[0]]=dist
+        return self.normalizescore(mindistance,smallIsBetter=1)
 
 
 
