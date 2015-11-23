@@ -225,7 +225,7 @@ class searcher:
         totalscores = dict([(row[0],0) for row in rows])
 
         # 此处是稍后放置评价函数的地方
-        weights = [(1.0,self.frequencyscore(rows))]
+        weights = [(0,self.frequencyscore(rows)),(1.0,self.locationscore(rows))]
 
         for (weight,scores) in weights:
             for url in totalscores:
@@ -269,5 +269,17 @@ class searcher:
             counts[row[0]]+=1
 
         return self.normalizescore(counts)
+
+
+    # 文档位置
+    def locationscore(self,rows):
+        locations=dict([(row[0],1000000) for row in rows])
+        for row in rows:
+            loc=sum(row[1:])
+            if loc < locations[row[0]]: locations[row[0]]=loc
+
+        return self.normalizescore(locations,smallIsBetter=1)
+
+
 
 
