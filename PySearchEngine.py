@@ -225,7 +225,7 @@ class searcher:
         totalscores = dict([(row[0],0) for row in rows])
 
         # 此处是稍后放置评价函数的地方
-        weights = []
+        weights = [(1.0,self.frequencyscore(rows))]
 
         for (weight,scores) in weights:
             for url in totalscores:
@@ -245,4 +245,29 @@ class searcher:
         rankedscores = sorted([(score,url) for (url,score) in scores.items()],reverse=1)
         for (score,urlid) in rankedscores[0:10]:
             print '%f\t%s' % (score,self.geturlname(urlid))
+
+
+    # 归一化函数
+    def normalizescore(self,scores,smallIsBetter=0):
+        vsmall=0.00001 #避免被0整除
+        if smallIsBetter:
+            minscore=min(scores.values())
+            return dict([(u,float(minscore)/max(vsmall,l)) for (u,l) \
+                in scores.items()])
+        else:
+            maxscore=max(scores.values())
+            if (maxscore-0)<1e-4:
+                maxscore=vsmall
+
+            return dict([(u,float(c)/maxscore) for (u,c) \
+               in scores.items()])
+
+    # 单词频度 Word Frequency
+    def frequencyscore(self,rows):
+        counts=dict([(row[0],0) for row in rows])
+        for row in rows:
+            counts[row[0]]+=1
+
+        return self.normalizescore(counts)
+
 

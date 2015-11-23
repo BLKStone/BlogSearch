@@ -179,3 +179,16 @@ urlfilter('http://www.douban.com/accounts/register?source=movie')
 urlfilter('http://movie.douban.com/review/best/')
 urlfilter('http://movie.douban.com/askmatrix/hot_questions/all')
 
+
+
+2015-11-23
+最近的测试结果
+
+In [17]: e.query("教父肖申克的救赎")
+select rowid from wordlist where word='教父'
+select rowid from wordlist where word='肖申克'
+select rowid from wordlist where word='的'
+select rowid from wordlist where word='救赎'
+0.000000    http://movie.douban.com/subject/1295124/
+0.000000    http://movie.douban.com/subject/1291841/
+0.000000    http://movie.douban.com/top250
