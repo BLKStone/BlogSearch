@@ -192,3 +192,14 @@ select rowid from wordlist where word='救赎'
 0.000000    http://movie.douban.com/subject/1295124/
 0.000000    http://movie.douban.com/subject/1291841/
 0.000000    http://movie.douban.com/top250
+
+
+2015-11-24
+
+reload(PySearchEngine)
+e=PySearchEngine.searcher('searchindex.db')
+e.calculatepagerank()
+
+cur=e.con.execute('select * from pagerank order by score')
+for i in range(3): print cur.next()
+e.geturlname(4)

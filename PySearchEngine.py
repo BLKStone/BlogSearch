@@ -170,6 +170,9 @@ class searcher:
     def __del__(self):
         self.con.close()
 
+    def dbcommit(self):
+        self.con.commit()
+
     def getmatchrows(self,q):
         
         # 构造查询的字符串
@@ -294,6 +297,57 @@ class searcher:
             dist=sum(abs(row[i]-row[i-1]) for i in range(2,len(row)))
             if dist<mindistance[row[0]]: mindistance[row[0]]=dist
         return self.normalizescore(mindistance,smallIsBetter=1)
+
+    # 简单计数
+    def inboundlinkscore(self,rows):
+        uniqueurls=set([row[0] for row in rows])
+        inboundcount=dict([(u,self.con.execute( \
+            'select count(*) from link where toid=%d' % u).fetchone()[0] \
+        ) for u in uniqueurls])
+
+        return self.normalizescore(inboundcount)
+
+    # 简易PageRank
+    def calculatepagerank(self,iterations=20):
+        # 清除当前的 PageRank 表
+        self.con.execute('drop table if exists pagerank')
+        self.con.execute('create table pagerank(urlid primary key,score)')
+
+        # 初始化每个url，令其PageRank值为1
+        self.con.execute('insert into pagerank select rowid, 1.0 from urllist')
+        self.dbcommit()
+
+        for i in range(iterations):
+            print ("Iterations %d" % (i))
+
+            for (urlid,) in self.con.execute('select rowid from urllist'):
+                
+                # 设置PageRank最小值
+                pr=0.15
+
+                # 循环遍历指向当前网页的所有其他网页
+                for (linker,) in self.con.execute('select distinct fromid  from link where toid=%d' % urlid):
+
+                    # 得到链接源对应网页的 PageRank值
+                    linkingpr = self.con.execute(
+                        "select score from pagerank where urlid=%d" % linker).fetchone()[0]
+                    
+                    # 根据链接源，求得总的链接数
+                    linkingcount = self.con.execute(
+                        "select count(*) from link where fromid=%d" % linker).fetchone()[0]
+                    
+                    pr+=0.85*(linkingpr/linkingcount)
+
+
+                # 更新 PageRank值
+                self.con.execute(
+                    "update pagerank set score=%f where urlid=%d" % (pr,urlid))
+
+            # 每轮迭代结束commit一次
+            self.dbcommit()
+
+                    
+
 
 
 
