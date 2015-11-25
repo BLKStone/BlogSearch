@@ -52,9 +52,6 @@ class crawler:
 
         # 获取每个单词 
         text = self.gettextonly(soup)
-        # 清理空格
-        text = self.drytext(text)
-        # 分词
         words = self.separatewords(text)
 
         # 得到URL的id
@@ -72,7 +69,7 @@ class crawler:
     # 地址过滤器
     def urlfilter(self,url):
         matcher_1 = re.compile(r'http://movie.douban.com/top250\?start=\d+.*')
-        matcher_2 = re.compile(r'^http://movie.douban.com/subject/\d+/$')
+        matcher_2 = re.compile(r'http://movie.douban.com/subject/\d+')
 
         if ( matcher_1.match(url) != None or matcher_2.match(url) != None ):
             return True
@@ -91,14 +88,6 @@ class crawler:
             return resultText
         else:
             return v.strip()
-
-    # 删除空格
-    # 此处还可以优化
-    # 不要把\n 删掉
-    def drytext(self,text):
-        text = text.strip()
-        text =  ' '.join(text.split())
-        return text
 
     # 根据任何非空白字符进行分词处理
     # 此处需要重写
@@ -126,34 +115,11 @@ class crawler:
 
     # 添加一个关联两个网页的链接
     def addlinkref(self,urlFrom,urlTo,linkText):
-
-        fromid = self.getentryid('urllist','url',urlFrom)
-        toid = self.getentryid('urllist','url',urlTo)
-
-
-        cur = self.con.execute("insert into link\
-            (fromid,toid) values (%d,%d)" % (fromid,toid))
-
-        linkid = cur.lastrowid
-
-        # 如果超链接的描述text为空的话就不添加数据库记录
-        if linkText != '':
-            # 拆分单词
-            words = self.separatewords(linkText)
-
-            for word in words:
-                #print word
-                wordid = self.getentryid('wordlist','word',word)
-                #print ("insert into linkwords (wordid,linkid) values (%d,%d)" % (wordid,linkid))
-                self.con.execute("insert into linkwords\
-                    (wordid,linkid) values (%d,%d)" % (wordid,linkid))
-
-        # self.dbcommit()
-        return
+        pass
 
     # 从一小组网页开始进行广度优先搜索。直至某一给定深度，
     # 期间为网页建立索引
-    def crawl(self,pages,depth=3):
+    def crawl(self,pages,depth=2):
         for i in range(depth):
             newpages = set()
             for page in pages:
@@ -168,21 +134,16 @@ class crawler:
                 self.addtoindex(page,soup)
 
                 links=soup('a')
-
                 for link in links:
                     if ('href' in dict(link.attrs)):
                         url=urljoin(page,link['href'])
-                        # if url.find("'")!=-1: continue
-                        #url = url.replace("'","%27")
-                        url=url.split('<')[0]
+                        if url.find("'")!=-1: continue
                         url=url.split('#')[0]
-
                         if url[0:4]=='http' and not self.isindexed(url):
                             if self.urlfilter(url):
-                                
                                 newpages.add(url)
-                                linkText = self.drytext(link.text)
-                                self.addlinkref(page,url,linkText)
+                        linkText=self.gettextonly(link)
+                        self.addlinkref(page,url,linkText)
 
                 self.dbcommit()
             pages=newpages

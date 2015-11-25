@@ -203,3 +203,43 @@ e.calculatepagerank()
 cur=e.con.execute('select * from pagerank order by score')
 for i in range(3): print cur.next()
 e.geturlname(4)
+
+
+reload(PySearchEngine)
+
+pagelist = ['http://movie.douban.com/top250']
+crawler = PySearchEngine.crawler('searchindex4.db')
+crawler.createindextables()
+crawler.crawl(pagelist)
+
+http://movie.douban.com/subject/1298070/?from=subject-page
+http://movie.douban.com/subject/2131459/comments?sort=time
+http://movie.douban.com/subject/3541415/collections
+
+
+http://movie.douban.com/top250?start=25&filter=&type=%3Ctype%20%27type%27%3E
+http://movie.douban.com/top250?start=50&filter=&type=%3Ctype%20%27type%27%3E
+http://movie.douban.com/top250?start=150&filter=&type=<type 'type'>
+http://movie.douban.com/top250?start=225&filter=&type=<type 'type'>
+http://movie.douban.com/top250?start=25&filter=&type=<type 'type'>
+
+
+pe%27>
+Could not open http://movie.douban.com/top250?start=225&filter=&type=<type %27type%27>
+Could not open http://movie.douban.com/top250?start=25&filter=&type=<type %27type%27>
+Indexing 
+
+url = "http://movie.douban.com/top250?start=25&filter=&type=<type 'type'>"
+
+
+crawler.urlfilter('')
+
+
+2015-11-25
+1. 过滤掉这种链接[完成]
+
+2. beautifulsoup bugfix[完成]
+
+3. 减少数据库IO次数[完成]
+
+4. 修改 isindexed 的实现方式
