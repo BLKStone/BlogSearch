@@ -243,3 +243,7 @@ crawler.urlfilter('')
 3. 减少数据库IO次数[完成]
 
 4. 修改 isindexed 的实现方式
+
+
+select w0.urlid,w0.location,w1.location,w2.location,w3.location,w4.location from wordlocation w0,wordlocation w1,wordlocation w2,wordlocation w3,wordlocation w4 where w0.wordid=609 and w0.urlid=w1.urlid and w1.wordid=331 and w1.urlid=w2.urlid and w2.wordid=144 and w2.urlid=w3.urlid and w3.wordid=67 and w3.urlid=w4.urlid and w4.wordid=145
+测试点1 171807

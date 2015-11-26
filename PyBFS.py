@@ -10,15 +10,17 @@
 # 如何用布隆过滤器过滤重复url，求Python代码实现
 # http://www.v2ex.com/t/71719
 
-#!/usr/bin/python
+# !/usr/bin/python
 # -*- coding: utf-8 -*-
 
 from BeautifulSoup import *
 from urlparse import *
 import urllib2
-import sys 
+import sys
+
 reload(sys)
-sys.setdefaultencoding('utf8') 
+sys.setdefaultencoding('utf8')
+
 
 def mytest():
     page = 'http://movie.douban.com/top250'
@@ -26,15 +28,16 @@ def mytest():
     # print c.read()
     soup = BeautifulSoup(c.read())
 
-    links=soup('a')
+    links = soup('a')
 
     for link in links:
         # print link.text
         # if link.text=='': print "I'm null!"
         # print '内容',link
-        if ('href' in dict(link.attrs)):
-            url=urljoin(page,link['href'])
+        if 'href' in dict(link.attrs):
+            url = urljoin(page, link['href'])
             print url
+
 
 def mytest2():
     page = 'http://movie.douban.com/top250'
@@ -46,59 +49,60 @@ def mytest2():
     text = drytext(text)
     print text
 
+
 def drytext(text):
     text = text.strip()
-    text =  ' '.join(text.split())
+    text = ' '.join(text.split())
     return text
 
+
 def gettextonly(soup):
-    v=soup.string
-    if v==None:
-        c=soup.contents
-        resultText=''
+    v = soup.string
+    if v == None:
+        c = soup.contents
+        resultText = ''
         for t in c:
-            subText=gettextonly(t)
-            resultText+=subText+'\n'
+            subText = gettextonly(t)
+            resultText += subText + '\n'
         return resultText
     else:
         return v.strip()
 
 
 class Graph(object):
-
-    def __init__(self,*args,**kwargs):
+    def __init__(self, *args, **kwargs):
         self.node_neighbors = {}
         self.visited = {}
 
-    def add_nodes(self,nodelist):
+    def add_nodes(self, nodelist):
 
         for node in nodelist:
             self.add_node(node)
 
-    def add_node(self,node):
+    def add_node(self, node):
         if not node in self.nodes():
             self.node_neighbors[node] = []
 
-    def add_edge(self,edge):
-        u,v = edge
-        if(v not in self.node_neighbors[u]) and ( u not in self.node_neighbors[v]):
+    def add_edge(self, edge):
+        u, v = edge
+        if (v not in self.node_neighbors[u]) and (u not in self.node_neighbors[v]):
             self.node_neighbors[u].append(v)
 
-            if(u!=v):
+            if (u != v):
                 self.node_neighbors[v].append(u)
 
     def nodes(self):
         return self.node_neighbors.keys()
 
-    def depth_first_search(self,root=None):
+    def depth_first_search(self, root=None):
         order = []
+
         def dfs(node):
             self.visited[node] = True
             order.append(node)
             for n in self.node_neighbors[node]:
                 if not n in self.visited:
                     dfs(n)
-
 
         if root:
             dfs(root)
@@ -110,12 +114,13 @@ class Graph(object):
         print order
         return order
 
-    def breadth_first_search(self,root=None):
+    def breadth_first_search(self, root=None):
         queue = []
         order = []
+
         def bfs():
-            while len(queue)> 0:
-                node  = queue.pop(0)
+            while len(queue) > 0:
+                node = queue.pop(0)
 
                 self.visited[node] = True
                 for n in self.node_neighbors[node]:
@@ -140,7 +145,7 @@ class Graph(object):
 
 def TestGraph():
     g = Graph()
-    g.add_nodes([i+1 for i in range(8)])
+    g.add_nodes([i + 1 for i in range(8)])
     g.add_edge((1, 2))
     g.add_edge((1, 3))
     g.add_edge((2, 4))
@@ -154,9 +159,3 @@ def TestGraph():
 
     order = g.breadth_first_search(1)
     order = g.depth_first_search(1)
-
-
-
-
-
-    
