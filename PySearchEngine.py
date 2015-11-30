@@ -4,12 +4,17 @@
 
 import datetime
 import urllib2
-from BeautifulSoup import *
+# from BeautifulSoup import *
+from bs4 import BeautifulSoup
 from urlparse import *
 from pysqlite2 import dbapi2 as sqlite
 from pybloom import BloomFilter
 import jieba
+import re
+import nn
 import sys
+
+import PyBFS
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -61,7 +66,7 @@ class Crawler:
         # 获取每个单词
         text = self.gettextonly(soup)
         # 清理空格
-        text = self.drytext(text)
+        # text = self.drytext(text)
         # 分词
         words = self.separatewords(text)
 
@@ -92,17 +97,29 @@ class Crawler:
     # 需要重构，删掉多余信息
     # javascript 去除
     # html 标签去除
-    def gettextonly(self, soup):
+    def gettextonlyold(self, soup):
         v = soup.string
         if v is None:
             c = soup.contents
             resulttext = ''
             for t in c:
-                subtext = self.gettextonly(t)
+                subtext = self.gettextonlyold(t)
                 resulttext += subtext + '\n'
             return resulttext
         else:
             return v.strip()
+
+    # 重构版 gettextonly
+    def gettextonly(soup):
+        # 清理script标签
+        [script.extract() for script in soup.findAll('script')]
+        [style.extract() for style in soup.findAll('style')]
+
+        reg = re.compile("<[^>]*>")
+        content = reg.sub('', soup.prettify()).strip()
+        content = " ".join(content.split())
+
+        return content
 
     # 删除空格
     # 此处还可以优化
@@ -113,7 +130,6 @@ class Crawler:
         return text
 
     # 根据任何非空白字符进行分词处理
-    # 此处需要重写
     # 注意一下此处list中的元素原先是 str
     # 修改后 返回的list中元素变成 unicode 类型
     def separatewords(self, text):
@@ -183,7 +199,9 @@ class Crawler:
                     continue
 
                 # soup = BeautifulSoup(c.read().decode('utf-8'))
-                soup = BeautifulSoup(c.read())
+                html = c.read()
+                soup = BeautifulSoup(html)
+
                 self.addtoindex(page, soup)
                 self.visited.add(page)  # 加入布隆过滤器
 
@@ -303,8 +321,9 @@ class Searcher:
         totalscores = dict([(row[0], 0) for row in rows])
 
         # 此处是稍后放置评价函数的地方
-        weights = [(1.0, self.frequencyscore(rows)), (0, self.locationscore(rows)),
-                   (0, self.distancescore(rows))]
+        weights = [(1.0, self.frequencyscore(rows)), (1.0, self.locationscore(rows)),
+                   (1.0, self.distancescore(rows)), (1.0, self.inboundlinkscore(rows)),
+                   (1.0, self.linktextscore(rows, wordids))]
 
         for (weight, scores) in weights:
             for url in totalscores:
@@ -319,31 +338,35 @@ class Searcher:
 
     # 测试查询
     def query(self, q):
+
+        # rows 查询到的相关网页集合 (urlid,w0.location,w1.location,w2.location)
         rows, wordids = self.getmatchrows(q)
-        print "测试点1", len(rows)
+
+        # 按(urlid,score) 组成字典
         scores = self.getscorelist(rows, wordids)
-        print "测试点2", len(scores)
-        # print scores[wordids[0]]
+
         rankedscores = sorted([(score, url) for (url, score) in scores.items()], reverse=1)
-        for (score, urlid) in rankedscores[0:10]:
-            print '%f\t%s' % (score, self.geturlname(urlid))
+        for i, (score, urlid) in enumerate(rankedscores[0:10]):
+            print '%d %f\t%s' % (i, score, self.geturlname(urlid))
 
     # 归一化函数
     def normalizescore(self, scores, smallIsBetter = 0):
-        vsmall = 0.00001  # 避免被0整除
+        vsmall = 0.0001  # 避免被0整除
         if smallIsBetter:
             minscore = min(scores.values())
             return dict([(u, float(minscore) / max(vsmall, l)) for (u, l) \
                          in scores.items()])
         else:
             maxscore = max(scores.values())
-            if (maxscore - 0) < 1e-4:
+            if abs(maxscore - 0) < 1e-4:
                 maxscore = vsmall
 
             return dict([(u, float(c) / maxscore) for (u, c) in scores.items()])
 
     # 单词频度 Word Frequency
     # rows 查询到的相关网页集合 (urlid,w0.location,w1.location,w2.location)
+    # counts 记录的是
+    # w0 出现的词频 + w1 出现的词频 + .... wN 出现的词频
     def frequencyscore(self, rows):
         counts = dict([(row[0], 0) for row in rows])
         for row in rows:
@@ -352,8 +375,10 @@ class Searcher:
         return self.normalizescore(counts)
 
     # 文档位置
+    # 记录所有关键词的位置索引的和loc
+    # loc越小认为相关性越强
     def locationscore(self, rows):
-        locations = dict([(row[0], 1000000) for row in rows])
+        locations = dict([(row[0], 10000000) for row in rows])
         for row in rows:
             loc = sum(row[1:])
             if loc < locations[row[0]]: locations[row[0]] = loc
@@ -361,20 +386,22 @@ class Searcher:
         return self.normalizescore(locations, smallIsBetter=1)
 
     # 单词距离
+    # 词与词之间的位置差的绝对值的和
+    # 越小越好
     def distancescore(self, rows):
 
         # 如果仅有一个单词，则得分都一样
         if len(rows[0]) <= 2: return dict([(row[0], 1.0) for row in rows])
 
         # 初始化字典
-        mindistance = dict([(row[0], 100000) for row in rows])
+        mindistance = dict([(row[0], 10000000) for row in rows])
 
         for row in rows:
             dist = sum(abs(row[i] - row[i - 1]) for i in range(2, len(row)))
             if dist < mindistance[row[0]]: mindistance[row[0]] = dist
         return self.normalizescore(mindistance, smallIsBetter=1)
 
-    # 简单计数
+    # 简单统计指向该页面的连接数
     def inboundlinkscore(self, rows):
         uniqueurls = set([row[0] for row in rows])
         inboundcount = dict([(u, self.con.execute(
@@ -420,12 +447,19 @@ class Searcher:
             # 每轮迭代结束commit一次
             self.dbcommit()
 
+    # 从链接文本中抽取有效信息
     def linktextscore(self, rows, wordids):
+
         linkscores = dict([(row[0], 0) for row in rows])
         for wordid in wordids:
             cur = self.con.execute('select link.fromid,link.toid from\
-             linkwords,link where wordid =%d and linkwords.linkid=link.rowid\
+             linkwords,link where wordid=%d and linkwords.linkid=link.rowid\
              ' % wordid)
+
+            # 显然有时 cur 可能是 None
+            # 如果无匹配的查询结果
+            if cur is None:
+                return linkscores
 
             for (fromid, toid) in cur:
                 if toid in linkscores:
@@ -433,12 +467,11 @@ class Searcher:
                         =%d' % fromid).fetchone()[0]
                     linkscores[toid] += pr
 
-        maxscore = max(linkscores.values())
-        normalizescores = dict([(u, float(l) / maxscore) for (u, l) in linkscores.items()])
-        return normalizescores
+        return self.normalizescore(linkscores)
 
-if __name__ == '__main__':
 
+# 搜索功能测试
+def testsearch():
     # pagelist = ['http://movie.douban.com/top250']
     # crawler = Crawler('Test2.db')
     # crawler.createindextables()
@@ -448,10 +481,35 @@ if __name__ == '__main__':
 
     # long running
     searcher = Searcher('depth3.db')
-    searcher.query("教父是肖申克的救赎")
+    # searcher.calculatepagerank()
+    searcher.query("搏击俱乐部")
 
     endtime = datetime.datetime.now()
 
     print (endtime - starttime).microseconds/1000.0, 'ms'
     print (endtime - starttime).seconds, 's'
+
+# 测试人工神经网络
+def testann():
+    mynet = nn.Searchnet('nn.db')
+    mynet.maketables()
+
+    wWorld, wRiver, wBank = 101, 102, 103
+    uWorldBank, uRiver, uEarth = 201, 202, 203
+
+    mynet.generatehiddennode([wWorld, wBank], [uWorldBank, uRiver, uEarth])
+
+    for c in mynet.con.execute('select * from wordhidden'):
+        print c
+
+    for c in mynet.con.execute('select * from hiddenurl'):
+        print c
+
+
+if __name__ == '__main__':
+    # testsearch()
+    PyBFS.mytest3()
+
+
+
 

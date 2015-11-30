@@ -13,9 +13,11 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from BeautifulSoup import *
+
+from bs4 import BeautifulSoup
 from urlparse import *
 import urllib2
+import re
 import sys
 
 reload(sys)
@@ -49,6 +51,20 @@ def mytest2():
     text = drytext(text)
     print text
 
+# 重构
+def mytest3():
+
+    # page = 'http://movie.douban.com/top250'
+    page = 'http://movie.douban.com/subject/1292052/'
+    c = urllib2.urlopen(page)
+    html = c.read()
+    soup = BeautifulSoup(html)
+
+    content = gettextonly2(soup)
+    print content
+
+
+
 
 def drytext(text):
     text = text.strip()
@@ -67,6 +83,19 @@ def gettextonly(soup):
         return resultText
     else:
         return v.strip()
+
+
+def gettextonly2(soup):
+    # 清理script标签
+    [script.extract() for script in soup.findAll('script')]
+    [style.extract() for style in soup.findAll('style')]
+
+    reg = re.compile("<[^>]*>")
+    content = reg.sub('', soup.prettify()).strip()
+    content = " ".join(content.split())
+
+    return content
+
 
 
 class Graph(object):
@@ -159,3 +188,5 @@ def TestGraph():
 
     order = g.breadth_first_search(1)
     order = g.depth_first_search(1)
+
+
