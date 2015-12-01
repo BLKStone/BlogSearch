@@ -482,7 +482,7 @@ def testsearch():
     # long running
     searcher = Searcher('depth3.db')
     # searcher.calculatepagerank()
-    searcher.query("搏击俱乐部")
+    searcher.query("雨人")
 
     endtime = datetime.datetime.now()
 
@@ -492,23 +492,28 @@ def testsearch():
 # 测试人工神经网络
 def testann():
     mynet = nn.Searchnet('nn.db')
-    mynet.maketables()
+    # mynet.maketables()
 
     wWorld, wRiver, wBank = 101, 102, 103
     uWorldBank, uRiver, uEarth = 201, 202, 203
 
     mynet.generatehiddennode([wWorld, wBank], [uWorldBank, uRiver, uEarth])
 
-    for c in mynet.con.execute('select * from wordhidden'):
-        print c
+    # for c in mynet.con.execute('select * from wordhidden'):
+    #     print c
+    #
+    # for c in mynet.con.execute('select * from hiddenurl'):
+    #     print c
 
-    for c in mynet.con.execute('select * from hiddenurl'):
-        print c
+    mynet.trainquery([wWorld, wBank], [uWorldBank, uRiver, uEarth], uWorldBank)
+    print mynet.getresult([wWorld, wBank], [uWorldBank, uRiver, uEarth])
 
 
 if __name__ == '__main__':
+
     # testsearch()
-    PyBFS.mytest3()
+    # PyBFS.mytest3()
+    testann()
 
 
 
