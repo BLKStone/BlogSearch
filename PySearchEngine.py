@@ -21,6 +21,7 @@ sys.setdefaultencoding('utf8')
 
 ignorewords = set(['the', 'of', 'to', 'and', 'a', 'in', 'is', 'it', '-', '，', '。', "'", '', u'的', u'是'])
 
+mynet = nn.searchnet('nn.db')
 
 # ignorewords = set(['the','of','to','and','a','in','is','it',])
 
@@ -410,6 +411,14 @@ class Searcher:
 
         return self.normalizescore(inboundcount)
 
+    # 神经网络评价指标
+    def nnscore(self, rows, wordids):
+        # 获得一个由唯一的URL ID构成的有序列表
+        urlids = [urlid for urlid in set([row[0] for row in rows])]
+        nnres = mynet.getresult(wordids, urlids)
+        scores = dict([(urlids[i], nnres[i]) for i in range(len(urlids))])
+        return self.normalizescore(scores)
+
     # 简易PageRank
     def calculatepagerank(self, iterations=20):
         # 清除当前的 PageRank 表
@@ -489,6 +498,7 @@ def testsearch():
     print (endtime - starttime).microseconds/1000.0, 'ms'
     print (endtime - starttime).seconds, 's'
 
+
 # 测试人工神经网络
 def testann():
     mynet = nn.Searchnet('nn.db')
@@ -509,11 +519,34 @@ def testann():
     print mynet.getresult([wWorld, wBank], [uWorldBank, uRiver, uEarth])
 
 
+# 测试神经网络训练
+def testtrain():
+
+    mynet = nn.Searchnet('nn.db')
+    # mynet.maketables()
+
+    wWorld, wRiver, wBank = 101, 102, 103
+    uWorldBank, uRiver, uEarth = 201, 202, 203
+
+    allurls = [uWorldBank, uRiver, uEarth]
+
+    for i in range(30):
+        mynet.trainquery([wWorld, wBank], allurls, uWorldBank)
+        mynet.trainquery([wRiver, wBank], allurls, uRiver)
+        mynet.trainquery([wWorld], allurls, uEarth)
+
+    print mynet.getresult([wWorld, wBank], allurls)
+    print mynet.getresult([wRiver, wBank], allurls)
+    print mynet.getresult([wBank], allurls)
+    print mynet.getresult([wWorld], allurls)
+
+
 if __name__ == '__main__':
 
     # testsearch()
     # PyBFS.mytest3()
-    testann()
+    # testann()
+    testtrain()
 
 
 
