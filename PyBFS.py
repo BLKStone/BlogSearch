@@ -32,10 +32,12 @@ def mytest():
 
     links = soup('a')
 
+    print type(links)
     for link in links:
         # print link.text
         # if link.text=='': print "I'm null!"
         # print '内容',link
+        print link
         if 'href' in dict(link.attrs):
             url = urljoin(page, link['href'])
             print url
@@ -62,6 +64,17 @@ def mytest3():
 
     content = gettextonly2(soup)
     print content
+
+    links = soup('a')
+    print type(links)
+    for link in links:
+        print link
+        if 'href' in dict(link.attrs):
+            url = urljoin(page, link['href'])
+            url = url.split('<')[0]
+            url = url.split('#')[0]
+            if url[0:4] == 'http':
+                print url
 
 
 

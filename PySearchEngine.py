@@ -21,7 +21,7 @@ sys.setdefaultencoding('utf8')
 
 ignorewords = set(['the', 'of', 'to', 'and', 'a', 'in', 'is', 'it', '-', '，', '。', "'", '', u'的', u'是'])
 
-mynet = nn.searchnet('nn.db')
+mynet = nn.Searchnet('nn.db')
 
 # ignorewords = set(['the','of','to','and','a','in','is','it',])
 
@@ -322,9 +322,12 @@ class Searcher:
         totalscores = dict([(row[0], 0) for row in rows])
 
         # 此处是稍后放置评价函数的地方
-        weights = [(1.0, self.frequencyscore(rows)), (1.0, self.locationscore(rows)),
-                   (1.0, self.distancescore(rows)), (1.0, self.inboundlinkscore(rows)),
-                   (1.0, self.linktextscore(rows, wordids))]
+        weights = [(1.0, self.frequencyscore(rows)),
+                   (1.0, self.locationscore(rows)),
+                   (1.0, self.distancescore(rows)),
+                   (1.0, self.inboundlinkscore(rows)),
+                   (1.0, self.linktextscore(rows, wordids)),
+                   (1.0, self.nnscore(rows, wordids))]
 
         for (weight, scores) in weights:
             for url in totalscores:
@@ -541,12 +544,28 @@ def testtrain():
     print mynet.getresult([wWorld], allurls)
 
 
+def classdemo():
+
+    starttime = datetime.datetime.now()
+
+    # long running
+    searcher = Searcher('depth3.db')
+    # searcher.calculatepagerank()
+    searcher.query("我是山姆")
+
+    endtime = datetime.datetime.now()
+
+    print (endtime - starttime).microseconds/1000.0, 'ms'
+    print (endtime - starttime).seconds, 's'
+
+
 if __name__ == '__main__':
 
     # testsearch()
     # PyBFS.mytest3()
     # testann()
-    testtrain()
+    # testtrain()
+    classdemo()
 
 
 
