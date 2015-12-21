@@ -175,6 +175,9 @@ class Crawler:
             words = self.separatewords(linkText)
 
             for word in words:
+                # 删除停词
+                if word in ignorewords:
+                    continue
                 # print word
                 wordid = self.getentryid('wordlist', 'word', word)
                 # print ("insert into linkwords (wordid,linkid) values (%d,%d)" % (wordid,linkid))
