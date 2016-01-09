@@ -14,14 +14,12 @@ import re
 import nn
 import sys
 
-import PyBFS
-
 reload(sys)
 sys.setdefaultencoding('utf8')
 
+
 ignorewords = set(['the', 'of', 'to', 'and', 'a', 'in', 'is', 'it', '-', '，', '。', "'", '', u'的', u'是'])
 
-mynet = nn.Searchnet('nn.db')
 
 # ignorewords = set(['the','of','to','and','a','in','is','it',])
 
@@ -30,7 +28,18 @@ class Crawler:
     # 初始化Crawler的类并传入数据库名称
     def __init__(self, dbname):
         self.con = sqlite.connect(dbname)
-        self.visited = BloomFilter(capacity=1000000, error_rate=0.001)
+
+        # 利用布隆过滤器进行url去重
+        self.visited = BloomFilter(capacity=10000, error_rate=0.0001)
+        
+        # url 白名单
+        self.urlwhitelist = [ r'http://blkstone.github.io/*']
+        self.matchers = []
+
+        for urlrule in self.urlwhitelist:
+            matcher = re.compile(urlrule)
+            self.matchers.append(matcher) 
+
 
     def __del__(self):
         self.con.close()
@@ -85,20 +94,20 @@ class Crawler:
 
     # 地址过滤器
     def urlfilter(self, url):
-        matcher_1 = re.compile(r'http://movie.douban.com/top250\?start=\d+.*')
-        matcher_2 = re.compile(r'^http://movie.douban.com/subject/\d+/$')
+        flag = False
+        
+        for matcher in self.matchers:
+            if matcher.match(url) is not None:
+                flag = True
+                break
 
-        if (matcher_1.match(url) is not None or
-                    matcher_2.match(url) is not None):
-            return True
-
-        return False
+        return flag
 
     # 从一个HTML页面中提取文字（不带标签的）
     # 需要重构，删掉多余信息
     # javascript 去除
     # html 标签去除
-    def gettextonlyold(self, soup):
+    def gettextonly_old(self, soup):
         v = soup.string
         if v is None:
             c = soup.contents
@@ -111,7 +120,7 @@ class Crawler:
             return v.strip()
 
     # 重构版 gettextonly
-    def gettextonly(soup):
+    def gettextonly(self, soup):
         # 清理script标签
         [script.extract() for script in soup.findAll('script')]
         [style.extract() for style in soup.findAll('style')]
@@ -192,7 +201,7 @@ class Crawler:
     # 对每个页面的处理都是addtoindex
     # 从一小组网页开始进行广度优先搜索。直至某一给定深度，
     # 期间为网页建立索引
-    def crawl(self, pages, depth=3):
+    def crawl(self, pages, depth=10):
         for i in range(depth):
             newpages = set()
             for page in pages:
@@ -246,6 +255,7 @@ class Searcher:
     # 初始化Searcher的类并传入数据库名称
     def __init__(self, dbname):
         self.con = sqlite.connect(dbname)
+        self.mynet = nn.Searchnet('nn.db')
         self.debug_mode = False
 
     def __del__(self):
@@ -353,7 +363,7 @@ class Searcher:
         scores = self.getscorelist(rows, wordids)
 
         rankedscores = sorted([(score, url) for (url, score) in scores.items()], reverse=1)
-        for i, (score, urlid) in enumerate(rankedscores[0:10]):
+        for i, (score, urlid) in enumerate(rankedscores):
             print '%d %f\t%s' % (i, score, self.geturlname(urlid))
 
     # 归一化函数
@@ -421,7 +431,7 @@ class Searcher:
     def nnscore(self, rows, wordids):
         # 获得一个由唯一的URL ID构成的有序列表
         urlids = [urlid for urlid in set([row[0] for row in rows])]
-        nnres = mynet.getresult(wordids, urlids)
+        nnres = self.mynet.getresult(wordids, urlids)
         scores = dict([(urlids[i], nnres[i]) for i in range(len(urlids))])
         return self.normalizescore(scores)
 
@@ -485,19 +495,28 @@ class Searcher:
         return self.normalizescore(linkscores)
 
 
+
+# -----------------------------------------------------------------------------
+# 以下均为功能测试函数
+
+
+# 抓取功能测试
+def testcrawler():
+    pagelist = ['http://blkstone.github.io/']
+    crawler = Crawler('blkstone.db')
+    crawler.createindextables()
+    crawler.crawl(pagelist)
+
+
 # 搜索功能测试
 def testsearch():
-    # pagelist = ['http://movie.douban.com/top250']
-    # crawler = Crawler('Test2.db')
-    # crawler.createindextables()
-    # crawler.crawl(pagelist)
 
     starttime = datetime.datetime.now()
 
     # long running
-    searcher = Searcher('depth3.db')
-    # searcher.calculatepagerank()
-    searcher.query("雨人")
+    searcher = Searcher('blkstone.db')
+    searcher.calculatepagerank()
+    searcher.query("社会工程学")
 
     endtime = datetime.datetime.now()
 
@@ -547,14 +566,14 @@ def testtrain():
     print mynet.getresult([wWorld], allurls)
 
 
-def classdemo():
+def searchdemo():
 
     starttime = datetime.datetime.now()
 
     # long running
     searcher = Searcher('depth3.db')
     # searcher.calculatepagerank()
-    searcher.query("我是山姆")
+    searcher.query("肖申克的救赎")
 
     endtime = datetime.datetime.now()
 
@@ -564,11 +583,12 @@ def classdemo():
 
 if __name__ == '__main__':
 
-    # testsearch()
+    testsearch()
     # PyBFS.mytest3()
     # testann()
     # testtrain()
-    classdemo()
+    # testcrawler()
+    # classdemo()
 
 
 

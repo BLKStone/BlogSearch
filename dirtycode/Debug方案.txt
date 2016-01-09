@@ -1,0 +1,29 @@
+Debug方案.txt
+
+
+http://blkstone.github.io/2015/08/31/social-engineering/
+
+
+原因分析
+page没有抓全
+http://blkstone.github.io/page/
+
+解决方案一 
+1. 扩大抓取范围 depth=4
+2. 修改布隆过滤器参数 10000 0.0001
+
+
+仍然没有抓全
+抓到 2,3,4, 11,12,13
+5~10都没有
+
+1.抓取深度改为10
+2.修改一些无效url
+
+
+基本抓取全面
+不过还有一些问题，比如汉语URL的处理
+
+Could not open http://blkstone.github.io/tags/数据库/
+
+
